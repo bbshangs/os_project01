@@ -9,6 +9,24 @@
 #include "info.h"
 
 static int current, running, complete, last;
+int queue[100];
+int f = 0, b = 0;
+int isempty(void) {
+	if (f == b)
+		return 1;
+	else
+		return 0;
+}
+int pop(void) {
+	int now = queue[f];
+	f = (f + 1) % 100;
+	return now;
+}
+void push(int idx) {
+	queue[b] = idx;
+	b = (b + 1) % 100;
+	return;
+}
 
 int compare(const void *a, const void *b) {
 	return ((Process *)a)->ready - ((Process *)b)->ready;
@@ -18,6 +36,7 @@ int next_proc(int rule, Process *proc, int proc_num);
 
 int schedule(int rule, Process *proc, int proc_num)
 {
+	//fprintf(stderr, "hi\n");
 	qsort(proc, proc_num, sizeof(Process), compare);
 
 	//for (int i = 0; i < proc_num; i++)
@@ -51,6 +70,7 @@ int schedule(int rule, Process *proc, int proc_num)
 
 		for (int i = 0; i < proc_num; i++) {
 			if (proc[i].ready == current) {
+				push(i);
 				proc[i].pid = exec_proc(proc[i]);
 				block_proc(proc[i].pid);
 			}
@@ -88,7 +108,25 @@ int next_proc(int rule, Process *proc, int proc_num)
 				idx = i;
 		}
 	}
-	else if (rule == RR) {
+	else if (rule == RR) {	
+		if (running == -1) {
+			if (isempty())
+				idx = -1;
+			else
+				idx = pop();
+		}
+		else if ((current - last) % 500 == 0) {
+			if (isempty())
+				idx = running;
+			else {
+				push(running);
+				idx = pop();
+			}
+		}
+		else
+			idx = running;
+		
+		/*	
 		if (running == -1) {
 			for (int i = 0; i < proc_num; i++) {
 				if (proc[i].exec > 0 && proc[i].pid != -1) {
@@ -105,6 +143,7 @@ int next_proc(int rule, Process *proc, int proc_num)
 		}
 		else 
 			idx = running;
+		*/
 	}
 	else if (rule == SJF) {
 		if (running != -1)
@@ -128,4 +167,5 @@ int next_proc(int rule, Process *proc, int proc_num)
 	//fprintf(stderr, "%s's turn\n", proc[idx].name);
 	return idx;
 }
+
 
